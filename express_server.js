@@ -44,8 +44,8 @@ function generateRandomString() {
 const randomKey = generateRandomString();
 
 app.post("/urls", (req, res) => {
-  console.log(req.body);  // Log the POST request body to the console
-  res.redirect(`/urls/${randomKey}`);         // Respond with 'Ok' (we will replace this)
+  console.log(req.body);  
+  res.redirect(`/urls/${randomKey}`);   
   urlDatabase[randomKey] = req.body.longURL;
 });
 
