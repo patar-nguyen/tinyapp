@@ -123,8 +123,11 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
-  if (!req.body.email || !req.body.pass) {
+  const userCheck = getUserByEmail(req.body.email, users);
+  if (!req.body.email || !req.body.password) {
     return res.status(400).send("Email and password cannot be blank");
+  } else if (userCheck) {
+    return res.status(400).send("Email is already in use");
   }
   const user_id = generateRandomString();
   users[user_id] = {
@@ -136,3 +139,13 @@ app.post("/register", (req, res) => {
   res.redirect("/urls");
 
 });
+
+//function to loop through user object and check to see if there is an existing user with the same credentials
+const getUserByEmail = (email, database) => {
+  for (let userID in database) {
+    if (email === database[userID].email){
+      return database[userID];
+    } 
+  }
+  return undefined;
+}
