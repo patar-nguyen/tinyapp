@@ -14,18 +14,34 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = { 
+  "userRandomID": {
+    id: "userRandomID", 
+    email: "user@example.com", 
+    password: "purple-monkey-dinosaur"
+  },
+ "user2RandomID": {
+    id: "user2RandomID", 
+    email: "user2@example.com", 
+    password: "dishwasher-funk"
+  }
+}
+
 //adding new username to cookies
 app.get("/urls/new", (req, res) => {
+  const userID = req.cookies["user"];
+  const user = users[userID];
   const templateVars = {
-    username: req.cookies["username"],
+    user,
   };
-  console.log(req.cookies["username"])
 
   res.render("urls_new", templateVars);
 });
 
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
+  const userID = req.cookies["user"];
+  const user = users[userID];
+  const templateVars = { urls: urlDatabase, user };
   res.render("urls_index", templateVars);
 });
 
@@ -56,7 +72,9 @@ app.post("/urls", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], username: req.cookies["username"]};
+  const userID = req.cookies["user"];
+  const user = users[userID];
+  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], user};
   res.render("urls_show", templateVars);
 });
 
@@ -89,12 +107,32 @@ app.post("/login", (req, res) => {
 });
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('username');
+  res.clearCookie('user');
   res.redirect('/urls');
 });
 
 //registration page
 app.get("/register", (req, res) => { 
-  const templateVars = { urls: urlDatabase, username: req.cookies["username"]};
+  const userID = req.cookies["user"];
+  const user = users[userID];
+  const templateVars = { 
+    urls: urlDatabase, 
+    user
+  };
   res.render("urls_register", templateVars);
+});
+
+app.post("/register", (req, res) => {
+  if (!req.body.email || !req.body.pass) {
+    return res.status(400).send("Email and password cannot be blank");
+  }
+  const user_id = generateRandomString();
+  users[user_id] = {
+    id: user_id,
+    email: req.body.email,
+    password: req.body.password
+  }
+  res.cookie("user", user_id);
+  res.redirect("/urls");
+
 });
