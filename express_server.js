@@ -12,6 +12,14 @@ app.use(cookieParser());
 const bcrypt = require('bcryptjs');
 const salt = bcrypt.genSaltSync(10);
 
+const cookieSession = require('cookie-session');
+
+app.use(cookieSession({
+  name: 'session',
+  keys: ['e3b84cd4-4ae4-49be-a597-45bffdcf6f4f', 'e79b97a8-6180-4d52-9e2f-90c7242e787a']
+}));
+
+
 // const urlDatabase = {
 //   "b2xVn2": "http://www.lighthouselabs.ca",
 //   "9sm5xK": "http://www.google.com"
@@ -67,7 +75,7 @@ const authenticateUser = (email, password) => {
 
 //adding new url
 app.get("/urls/new", (req, res) => { 
-  const userID = req.cookies["user"]
+  const userID = req.session["user"]
   const user = users[userID]
   const templateVars = {
     user,
@@ -81,7 +89,7 @@ app.get("/urls/new", (req, res) => {
 
 //creating the urls page
 app.get("/urls", (req, res) => {
-  const userID = req.cookies["user"];
+  const userID = req.session["user"];
   const user = users[userID];
   const templateVars = { urls: urlDatabase, 
     user };
@@ -110,7 +118,7 @@ const randomKey = generateRandomString();
 //generating random key and assigning it to new website
 app.post("/urls", (req, res) => {
   const randomKey = generateRandomString();
-  const userID = req.cookies["user"];
+  const userID = req.session["user"];
   const user = users[userID];
   urlDatabase[randomKey] = {
     longURL: req.body.longURL,
@@ -189,10 +197,11 @@ app.post("/login", (req, res) => {
   const password = req.body.password;
 
   const user = authenticateUser(email,password);
-  //If authenticated, set a cookie with its user id and redirect.
+  //if authenticated, set a cookie with its user id and redirect.
   if (user) {
     const user_id = user.id
-      res.cookie('user', user_id);
+      //res.cookie('user', user_id);
+      req.session["user"] = user_id;
       res.redirect(`/urls`);
     } else {
       return res.status(403).send("Incorrect password");
@@ -201,7 +210,8 @@ app.post("/login", (req, res) => {
 
 //logout
 app.post("/logout", (req, res) => {
-  res.clearCookie('user');
+  req.session["user"] = null;
+  //res.clearCookie('user');
   res.redirect('/urls');
 });
 
@@ -229,7 +239,8 @@ app.post("/register", (req, res) => {
     email: req.body.email,
     password: bcrypt.hashSync(req.body.password, salt)
   }
-  res.cookie('user', user);
+  //res.cookie('user', user);
+  req.session["user"] = user;
   res.redirect('/urls');
 });
 
