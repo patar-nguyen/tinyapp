@@ -27,6 +27,16 @@ const users = {
   }
 }
 
+//function to loop through user object and check to see if there is an existing user with the same credentials
+const getUserByEmail = (email, database) => {
+  for (let userID in database) {
+    if (email === database[userID].email){
+      return database[userID];
+    } 
+  }
+  return undefined;
+};
+
 //adding new username to cookies
 app.get("/urls/new", (req, res) => {
   const userID = req.cookies["user"];
@@ -100,11 +110,30 @@ app.post("/urls/:shortURL/update", (req, res) => {
   res.redirect('/urls');
 });
 
-app.post("/login", (req, res) => {
-  const username = req.body.username;
-  res.cookie('username', username);
-  res.redirect `/urls`;
+app.get("/login", (req, res) => {
+  const userID = req.cookies["user"]
+  const user = users[userID]
+  const templateVars = { urls: urlDatabase, 
+    user };
+  res.render("urls_login", templateVars);
 });
+
+//checking to see if passwords or email exists in users object
+app.post("/login", (req, res) => {
+  const user = getUserByEmail(req.body.email, users);
+  if (user) {
+    if (user.password === req.body.password) {
+      const user_id = user.id;
+      res.cookie("user", user_id);
+      res.redirect("/urls");
+    } else if (req.body.password !== user.password) {
+      return res.status(403).send("Incorrect password")
+    }
+  } else {
+    return res.status(403).send("Email does not exist. Create new account")
+  }
+}); 
+
 
 app.post("/logout", (req, res) => {
   res.clearCookie('user');
@@ -135,17 +164,7 @@ app.post("/register", (req, res) => {
     email: req.body.email,
     password: req.body.password
   }
-  res.cookie("user", user_id);
-  res.redirect("/urls");
-
+  res.cookie('user', user_id);
+  res.redirect('/urls');
 });
 
-//function to loop through user object and check to see if there is an existing user with the same credentials
-const getUserByEmail = (email, database) => {
-  for (let userID in database) {
-    if (email === database[userID].email){
-      return database[userID];
-    } 
-  }
-  return undefined;
-}
