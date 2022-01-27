@@ -9,6 +9,9 @@ app.use(bodyParser.urlencoded({extended: true}));
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 
+const bcrypt = require('bcryptjs');
+const salt = bcrypt.genSaltSync(10);
+
 // const urlDatabase = {
 //   "b2xVn2": "http://www.lighthouselabs.ca",
 //   "9sm5xK": "http://www.google.com"
@@ -46,6 +49,20 @@ const getUserByEmail = (email, database) => {
     } 
   }
   return undefined;
+};
+
+const authenticateUser = (email, password) => {
+  const user = getUserByEmail(email, users);
+
+  console.log("FORM PASSWORD:", password, "DB PASSWORD:", user.password);
+
+  // if we got a user back and the passwords match then return the userObj
+  if (user && bcrypt.compareSync(password, user.password)) {
+    // user is authenticated
+    return user;
+  } else {
+    return false;
+  }
 };
 
 //adding new url
@@ -102,6 +119,7 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${randomKey}`);   
 });
 
+//urls list page
 app.get("/urls/:shortURL", (req, res) => {
   const userID = req.cookies["user"];
   const user = users[userID];
@@ -156,7 +174,7 @@ app.post("/urls/:shortURL/update", (req, res) => {
   } 
   res.redirect('/urls');
 });
-
+//login page
 app.get("/login", (req, res) => {
   const userID = req.cookies["user"]
   const user = users[userID]
@@ -165,23 +183,23 @@ app.get("/login", (req, res) => {
   res.render("urls_login", templateVars);
 });
 
-//checking to see if passwords or email exists in users object
+//login page
 app.post("/login", (req, res) => {
-  const user = getUserByEmail(req.body.email, users);
+  const email = req.body.email;
+  const password = req.body.password;
+
+  const user = authenticateUser(email,password);
+  //If authenticated, set a cookie with its user id and redirect.
   if (user) {
-    if (user.password === req.body.password) {
-      const user_id = user.id;
-      res.cookie("user", user_id);
-      res.redirect("/urls");
-    } else if (req.body.password !== user.password) {
-      return res.status(403).send("Incorrect password")
+    const user_id = user.id
+      res.cookie('user', user_id);
+      res.redirect(`/urls`);
+    } else {
+      return res.status(403).send("Incorrect password");
     }
-  } else {
-    return res.status(403).send("Email does not exist. Create new account")
-  }
 }); 
 
-
+//logout
 app.post("/logout", (req, res) => {
   res.clearCookie('user');
   res.redirect('/urls');
@@ -197,7 +215,7 @@ app.get("/register", (req, res) => {
   };
   res.render("urls_register", templateVars);
 });
-
+//registration page
 app.post("/register", (req, res) => {
   const userCheck = getUserByEmail(req.body.email, users);
   if (!req.body.email || !req.body.password) {
@@ -209,7 +227,7 @@ app.post("/register", (req, res) => {
   users[user] = {
     id: user,
     email: req.body.email,
-    password: req.body.password
+    password: bcrypt.hashSync(req.body.password, salt)
   }
   res.cookie('user', user);
   res.redirect('/urls');
