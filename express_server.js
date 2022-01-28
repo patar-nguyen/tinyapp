@@ -21,12 +21,6 @@ app.use(cookieSession({
   keys: ['e3b84cd4-4ae4-49be-a597-45bffdcf6f4f', 'e79b97a8-6180-4d52-9e2f-90c7242e787a']
 }));
 
-
-// const urlDatabase = {
-//   "b2xVn2": "http://www.lighthouselabs.ca",
-//   "9sm5xK": "http://www.google.com"
-// };
-
 const urlDatabase = {
   b6UTxQ: {
     longURL: "https://www.tsn.ca",
@@ -51,7 +45,15 @@ const users = {
   }
 };
 
-//adding new url
+app.get("/urls.json", (req, res) => {
+  res.json(urlDatabase);
+});
+
+app.listen(PORT, () => {
+  console.log(`Example app listening on port ${PORT}`);
+});
+
+//User is redirected to a login page if not logged in. Once logged in, user is able to create a new url
 app.get("/urls/new", (req, res) => {
   const userID = req.session["user"];
   const user = users[userID];
@@ -65,7 +67,7 @@ app.get("/urls/new", (req, res) => {
   }
 });
 
-//creating the urls page
+//If not logged in, user will be asked to register/login. Once logged in, user is able to access all their urls
 app.get("/urls", (req, res) => {
   const userID = req.session["user"];
   const user = users[userID];
@@ -74,19 +76,7 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
-app.get("/", (req, res) => {
-  res.send("Hello!");
-});
-
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
-
-app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}`);
-});
-
-//generating random key and assigning it to new website
+//Once user is logged in and creates a new url, their urls page will be updated with a random short url and the long url / website provided
 app.post("/urls", (req, res) => {
   const randomKey = generateRandomString();
   const userID = req.session["user"];
@@ -98,22 +88,30 @@ app.post("/urls", (req, res) => {
   res.redirect(`/urls/${randomKey}`);
 });
 
-//urls list page
+//Displays the edit a url page if user is logged in. Otherwise, user will be asked to log in
 app.get("/urls/:shortURL", (req, res) => {
   const userID = req.session["user"];
   const user = users[userID];
   const templateVars = { shortURL: req.params.shortURL,
     longURL: urlDatabase[req.params.shortURL].longURL,
-    user};
-  res.render("urls_show", templateVars);
+    user
+  };
+  if (!user) {
+    return res.status(403).send("Login or register");
+  } else if (urlDatabase[req.params.shortURL].userID === user.id) {
+    res.render("urls_show", templateVars);
+  } else {
+    return res.status(403).send("Inaccessible. Login to correct account");
+  }
 });
 
+//Redirects user to website if they click on the short url
 app.get("/u/:shortURL", (req, res) => {
   const longURL = urlDatabase[req.params.shortURL].longURL;
   res.redirect(longURL);
 });
 
-//delete url
+//User can delete their url only if they are logged in
 app.post('/urls/:shortURL/delete', (req, res) => {
   const userID = req.session["user"];
   const user = users[userID];
@@ -125,7 +123,7 @@ app.post('/urls/:shortURL/delete', (req, res) => {
   }
 });
 
-//editing url
+//User can edit their url only if they are logged in
 app.post("/urls/:shortURL/edit", (req, res) => {
   const shortURL = req.params.shortURL;
   const userID = req.session["user"];
@@ -137,7 +135,7 @@ app.post("/urls/:shortURL/edit", (req, res) => {
   }
 });
 
-//updating url after editing
+//User can update their url only if logged it
 app.post("/urls/:shortURL/update", (req, res) => {
   const shortURL = req.params.shortURL;
   const userID = req.session["user"];
@@ -154,7 +152,7 @@ app.post("/urls/:shortURL/update", (req, res) => {
   res.redirect('/urls');
 });
 
-//login page
+//Login page
 app.get("/login", (req, res) => {
   const userID = req.session["user"];
   const user = users[userID];
@@ -163,7 +161,7 @@ app.get("/login", (req, res) => {
   res.render("urls_login", templateVars);
 });
 
-//login page
+//Login page checks to see if user enter correct credentials
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
@@ -172,22 +170,20 @@ app.post("/login", (req, res) => {
   //if authenticated, set a cookie with its user id and redirect.
   if (user) {
     const user_id = user.id;
-    //res.cookie('user', user_id);
     req.session["user"] = user_id;
     res.redirect(`/urls`);
   } else {
-    return res.status(403).send("Incorrect password");
+    return res.status(403).send("Incorrect password or email");
   }
 });
 
-//logout
+//Logs user out
 app.post("/logout", (req, res) => {
   req.session["user"] = null;
-  //res.clearCookie('user');
   res.redirect('/urls');
 });
 
-//registration page
+//Registration page
 app.get("/register", (req, res) => {
   const userID = req.session["user"];
   const user = users[userID];
@@ -197,11 +193,11 @@ app.get("/register", (req, res) => {
   };
   res.render("urls_register", templateVars);
 });
-//registration page
+//Registration page. User must enter an email that doesn't exist and fields cannot be empty
 app.post("/register", (req, res) => {
   const userCheck = getUserByEmail(req.body.email, users);
   if (!req.body.email || !req.body.password) {
-    return res.status(400).send("Email and password cannot be blank");
+    return res.status(400).send("Email and password cannot be empty");
   } else if (userCheck) {
     return res.status(400).send("Email is already in use");
   }
@@ -211,7 +207,6 @@ app.post("/register", (req, res) => {
     email: req.body.email,
     password: bcrypt.hashSync(req.body.password, salt)
   };
-  //res.cookie('user', user);
   req.session["user"] = user;
   res.redirect('/urls');
 });
