@@ -60,7 +60,7 @@ app.get("/urls/new", (req, res) => {
   const templateVars = {
     user,
   };
-  if (!userID) {
+  if (!user) {
     res.redirect("/login");
   } else {
     res.render("urls_new", templateVars);
