@@ -8,9 +8,6 @@ app.set("view engine", "ejs");
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 
-const cookieParser = require("cookie-parser");
-app.use(cookieParser());
-
 const bcrypt = require('bcryptjs');
 const salt = bcrypt.genSaltSync(10);
 
@@ -51,6 +48,19 @@ app.get("/urls.json", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}`);
+});
+
+app.get("/", (req, res) => {
+  const userID = req.session["user"];
+  const user = users[userID];
+  const templateVars = {
+    user,
+  };
+  if (!user) {
+    res.redirect("/login");
+  } else {
+    res.redirect("/urls");
+  }
 });
 
 //User is redirected to a login page if not logged in. Once logged in, user is able to create a new url
@@ -135,7 +145,7 @@ app.post("/urls/:shortURL/edit", (req, res) => {
   }
 });
 
-//User can update their url only if logged it
+//User can update their url only if logged in
 app.post("/urls/:shortURL/update", (req, res) => {
   const shortURL = req.params.shortURL;
   const userID = req.session["user"];
@@ -158,7 +168,11 @@ app.get("/login", (req, res) => {
   const user = users[userID];
   const templateVars = { urls: urlDatabase,
     user };
+  if (user) {
+    res.redirect("/urls") 
+  } else {
   res.render("urls_login", templateVars);
+  }
 });
 
 //Login page checks to see if user enter correct credentials
@@ -179,7 +193,7 @@ app.post("/login", (req, res) => {
 
 //Logs user out
 app.post("/logout", (req, res) => {
-  req.session["user"] = null;
+  req.session = null;
   res.redirect('/urls');
 });
 
@@ -191,7 +205,11 @@ app.get("/register", (req, res) => {
     urls: urlDatabase,
     user
   };
-  res.render("urls_register", templateVars);
+  if (user) {
+    res.redirect("/urls");
+  } else {
+    res.render("urls_register", templateVars);
+  }
 });
 //Registration page. User must enter an email that doesn't exist and fields cannot be empty
 app.post("/register", (req, res) => {
